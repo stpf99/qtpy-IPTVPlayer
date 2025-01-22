@@ -1,4 +1,4 @@
-<img width="964" alt="diseqc" src="https://github.com/stpf99/qtpy-IPTVPlayer/blob/4e5ff9545f772a4115c975dae751e210ac3f00c6/qtpy-IPTVPlayer.png">
+<img width="964" alt="diseqc" src="https://github.com/stpf99/qtpy-IPTVPlayer/blob/cae582eda2ca58e015695c25e307a4949e3a11d4/ver2.5.png">
 
 
 info for ver 2.5 :
