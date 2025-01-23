@@ -100,42 +100,64 @@ class TTSHandler:
 
         def stream_audio():
             try:
-                if self.process is None:
-                    cmd = ["piper-tts", "--output-raw"]
-                    if self.model_path:
-                        cmd.extend(["-m", self.model_path])
-                    if self.config_path:
-                        cmd.extend(["-c", self.config_path])
-                        
-                    self.process = subprocess.Popen(
-                        cmd,
-                        stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        bufsize=0
-                    )
+                # Zamknij istniejący proces, jeśli istnieje
+                if self.process is not None:
+                    try:
+                        self.process.terminate()
+                        self.process.wait()
+                    except Exception:
+                        pass
 
-                # Send text to piper-tts
+                cmd = ["piper-tts", "--output-raw"]
+                if self.model_path:
+                    cmd.extend(["-m", self.model_path])
+                if self.config_path:
+                    cmd.extend(["-c", self.config_path])
+                    
+                self.process = subprocess.Popen(
+                    cmd,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    bufsize=0
+                )
+
+                # Wyczyść kolejkę przed dodaniem nowych danych
+                while not self.audio_queue.empty():
+                    try:
+                        self.audio_queue.get_nowait()
+                    except queue.Empty:
+                        break
+
+                # Wyślij tekst do piper-tts
                 self.process.stdin.write(text.encode('utf-8') + b'\n')
                 self.process.stdin.flush()
 
-                # Read and queue audio data
-                chunk_size = 2048  # Adjust this value if needed
+                # Odczytaj i dodaj dane audio do kolejki
+                chunk_size = 2048
                 while self.running:
                     audio_chunk = self.process.stdout.read(chunk_size)
                     if not audio_chunk:
                         break
-                    # Convert from 16-bit PCM to float32
+                    # Konwersja z 16-bit PCM do float32
                     audio_data = np.frombuffer(audio_chunk, dtype=np.int16).astype(np.float32) / 32768.0
                     self.audio_queue.put(audio_data)
 
             except Exception as e:
                 print(f"Error in TTS streaming: {e}")
+            finally:
+                # Upewnij się, że proces jest zamknięty
+                if self.process is not None:
+                    try:
+                        self.process.terminate()
+                        self.process.wait()
+                    except Exception:
+                        pass
 
-        # Start audio streaming in a separate thread
+        # Uruchom w osobnym wątku z daemon=True
         threading.Thread(target=stream_audio, daemon=True).start()
 
-        # Ensure audio stream is running
+        # Włącz strumień audio, jeśli nie jest aktywny
         if not self.is_playing:
             self.start_audio_stream()
 
@@ -381,31 +403,39 @@ class IPTVPlayer(QMainWindow):
             print(f"Error initializing transcription client: {e}")
             
     def check_whisper_output(self):
-        """Sprawdza kolejkę wyjścia whisper-live, tłumaczy tekst i aktualizuje GUI oraz TTS"""
+        # Use a class-level set to track spoken translations across method calls
+        if not hasattr(self, '_spoken_translations'):
+            self._spoken_translations = set()
+
         try:
-            while True:  # odbierz wszystkie dostępne wiadomości
+            while True:
                 try:
                     text = self.whisper_queue.get_nowait()
-                    if text and text.strip():  # sprawdź czy tekst nie jest pusty
-                        # Przetłumacz tekst
-                        try:
-                            translated_text = self.translator.translate(text.strip())
-                            combined_text = f"Original: {text.strip()}\n{self.system_locale.upper()}: {translated_text}"
+                    if text and text.strip():
+                        translated_text = self.translator.translate(text.strip())
+                        combined_text = f"Original: {text.strip()}\n{self.system_locale.upper()}: {translated_text}"
+                
+                        # Aktualizuj GUI
+                        self.whisper_output.emit(combined_text)
+                
+                        # Synteza TTS tylko dla unikalnych, nieprzetworzonych wcześniej tłumaczeń
+                        if (self.tts_enabled and 
+                            self.tts_handler and 
+                            self.tts_handler.tts_available and 
+                            translated_text not in self._spoken_translations):
                         
-                            # Aktualizuj GUI
-                            self.whisper_output.emit(combined_text)
+                            QTimer.singleShot(50, lambda t=translated_text: 
+                                self.tts_handler.speak(t))
                         
-                            # Przekaż przetłumaczony tekst do TTS
-                            if self.tts_enabled and self.tts_handler and self.tts_handler.tts_available:
-                                self.tts_handler.speak(translated_text)  # Przekazujemy przetłumaczony tekst
-                            
-                        except Exception as e:
-                            print(f"Translation error: {e}")
-                            # W przypadku błędu tłumaczenia, wyświetl tylko oryginalny tekst
-                            self.whisper_output.emit(text)
+                            # Dodaj do zbioru już przetłumaczonych i wypowiedzianych tekstów
+                            self._spoken_translations.add(translated_text)
                         
+                            # Opcjonalnie: ogranicz rozmiar zbioru, aby nie rosło w nieskończoność
+                            if len(self._spoken_translations) > 100:
+                                self._spoken_translations.clear()
+        
                 except queue.Empty:
-                    break  # kolejka jest pusta, przerwij pętlę
+                    break
                 
         except Exception as e:
             print(f"Error in check_whisper_output: {e}")
