@@ -39,6 +39,19 @@ import threading
 import subprocess
 import queue
 
+def start_whisper_server():
+    whisper_dir = os.path.join(os.path.dirname(__file__), "WhisperLive")
+    command = [
+        "python3.11", os.path.join(whisper_dir, "run_server.py"),
+        "--port", "9090",
+        "--backend", "faster_whisper",
+        "--omp_num_threads", "6",
+        "--no_single_model"
+    ]
+    subprocess.Popen(command, cwd=whisper_dir)
+
+
+
 class TTSHandler:
     def __init__(self, model_path=None, config_path=None):
         self.audio_queue = queue.Queue()
@@ -784,10 +797,24 @@ class IPTVPlayer(QMainWindow):
         if self.tts_handler:
             self.tts_handler.stop_audio_stream()
         super().closeEvent(event)
-        
+    
+    def start_whisper_server():
+        whisper_dir = os.path.join(os.path.dirname(__file__), "WhisperLive")
+        command = [
+            "python3.11", os.path.join(whisper_dir, "run_server.py"),
+            "--port", "9090",
+            "--backend", "faster_whisper",
+            "--omp_num_threads", "6",
+            "--no_single_model"
+    ]
+        subprocess.Popen(command, cwd=whisper_dir)
+
+       
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     player = IPTVPlayer()
+    # Uruchom serwer przy starcie aplikacji
+    start_whisper_server()
     player.show()
     sys.exit(app.exec())
                             
