@@ -483,7 +483,11 @@ class IPTVPlayer(QMainWindow):
     def stop_channel(self):
         self.media_player.stop()
         if self.transcription_client:
-            self.transcription_client = None
+            try:
+                # Close the transcription client if possible
+                self.transcription_client = None
+            except Exception as e:
+                print(f"Error stopping transcription: {e}")
 
     def load_remote_playlist(self):
         url = self.url_field.text()
@@ -783,6 +787,23 @@ class IPTVPlayer(QMainWindow):
         super().closeEvent(event)
     
     def start_whisper_server():
+        import psutil
+        import subprocess
+        import os
+
+        # Kill any existing processes using port 9090
+        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+            try:
+                # Check if the process is listening on port 9090
+                for conn in proc.connections():
+                    if conn.laddr.port == 9090:
+                        print(f"Killing process {proc.pid} using port 9090")
+                        proc.terminate()
+                        proc.wait(timeout=5)
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
+                pass
+
+        # Start Whisper Live server
         whisper_dir = os.path.join(os.path.dirname(__file__), "WhisperLive")
         command = [
             "python3.11", os.path.join(whisper_dir, "run_server.py"),
@@ -790,7 +811,7 @@ class IPTVPlayer(QMainWindow):
             "--backend", "faster_whisper",
             "--omp_num_threads", "6",
             "--no_single_model"
-    ]
+        ]
         subprocess.Popen(command, cwd=whisper_dir)
 
        
