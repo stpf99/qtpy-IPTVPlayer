@@ -345,22 +345,6 @@ class IPTVPlayer(QMainWindow):
             print(f"Błąd inicjalizacji TTS: {e}")
             self.tts_handler = None
 
-    def initialize_piper_tts(self):
-        """Initialize Piper TTS with Polish voice model"""
-        try:
-            model_path = "/home/ts/qtpy-IPTVPlayer-main/pl_PL-darkman-medium.onnx"
-            config_path = "/home/ts/qtpy-IPTVPlayer-main/pl_pl_PL_darkman_medium_pl_PL-darkman-medium.onnx.json"
-            
-            if not os.path.exists(model_path) or not os.path.exists(config_path):
-                raise FileNotFoundError("Piper TTS model files not found")
-                
-            self.piper_voice = PiperVoice.load(model_path, config_path)
-            self.audio_queue = []
-            self.sample_rate = 22050  # Default Piper sample rate
-            
-        except Exception as e:
-            print(f"Error initializing Piper TTS: {e}")
-            self.piper_voice = None
 
     def play_channel_double_click(self, item):
         if item and item.childCount() == 0:
