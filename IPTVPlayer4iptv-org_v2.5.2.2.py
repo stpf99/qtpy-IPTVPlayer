@@ -452,17 +452,17 @@ class IPTVPlayer(QMainWindow):
                         
                             QTimer.singleShot(50, lambda t=translated_text: 
                                 self.tts_handler.speak(t))
-                                                
+                        
                             # Dodaj do zbioru już przetłumaczonych i wypowiedzianych tekstów
                             self._spoken_translations.add(translated_text)
-                        
+
                             # Opcjonalnie: ogranicz rozmiar zbioru, aby nie rosło w nieskończoność
                             if len(self._spoken_translations) > 100:
                                 self._spoken_translations.clear()
-        
+
                 except queue.Empty:
                     break
-                
+
         except Exception as e:
             print(f"Error in check_whisper_output: {e}")
     
