@@ -38,6 +38,8 @@ from io import StringIO
 import threading
 import subprocess
 import queue
+from functools import partial
+import socket
 
 def is_port_in_use(port):
     """Sprawdza czy port jest zajęty."""
@@ -450,7 +452,7 @@ class IPTVPlayer(QMainWindow):
                         
                             QTimer.singleShot(50, lambda t=translated_text: 
                                 self.tts_handler.speak(t))
-                        
+                                                
                             # Dodaj do zbioru już przetłumaczonych i wypowiedzianych tekstów
                             self._spoken_translations.add(translated_text)
                         
@@ -502,7 +504,8 @@ class IPTVPlayer(QMainWindow):
             self.tts_handler.start_audio_stream()
         else:
             self.tts_handler.stop_audio_stream()
-    
+        self._spoken_translations.clear()  # Wyczyść historię
+        
     def process_text_for_tts(self, text):
         if self.tts_enabled:
             self.tts_handler.speak(text)
@@ -817,7 +820,7 @@ class IPTVPlayer(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     player = IPTVPlayer()
-    start_whisper_server_if_needed
+    start_whisper_server_if_needed()
     player.show()
     sys.exit(app.exec())
                             
