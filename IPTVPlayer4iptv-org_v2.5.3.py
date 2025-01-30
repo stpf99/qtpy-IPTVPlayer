@@ -192,7 +192,7 @@ class TTSHandler:
                     except Exception:
                         pass
 
-                cmd = ["piper-tts", "--output-raw", "--noise_scale=1.0", "--length_scale=0.8", "--noise_w=0.5", "--sentence_silence=0.0"]
+                cmd = ["piper-tts", "--output-raw", "--noise_scale=1.0", "--length_scale=0.5", "--noise_w=0.5", "--sentence_silence=0.0"]
                 if self.model_path:
                     cmd.extend(["-m", self.model_path])
                 if self.config_path:
@@ -855,12 +855,8 @@ class IPTVPlayer(QMainWindow):
         """Czyszczenie zasobów przed zamknięciem"""
         if self.tts_handler:
             self.tts_handler.stop_audio_stream()
-        if self.transcription_thread and self.transcription_thread.isRunning():
-            self.transcription_thread.quit()
-            self.transcription_thread.wait()
         super().closeEvent(event)
-    
-       
+              
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     player = IPTVPlayer()
